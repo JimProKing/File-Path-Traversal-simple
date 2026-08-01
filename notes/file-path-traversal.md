@@ -1,112 +1,67 @@
-# File Path Traversal (Simple Case)
+# File Path Traversal — simple case
 
-> Lab: **File path traversal, simple case** — Web Security Academy  
-> Status: **Solved**
+Academy 랩. 풀었음.
 
-![Lab notes](images/file-path-traversal.jpg)
+![실습 메모](images/file-path-traversal.jpg)
 
----
+## 뭐 했는지
 
-## 한국어
+1. 상품 페이지 들어가서 이미지 뜨게 함
+2. Burp **HTTP history** 에서 `/image?filename=...` 찾음  
+   (`/product?productId=...` 아님. 그거 HTML 페이지 요청임)
+3. Repeater로 보냄 (Intercept 안 켜도 됨)
+4. filename 바꿈:
 
-### 한 줄 요약
-
-서버가 이미지를 `기준경로 + filename` 으로만 열어 주면,  
-`filename=../../../etc/passwd` 로 **웹 루트 밖 파일**을 읽을 수 있다.
-
-### 재현 단계 (Burp Suite)
-
-1. 상품 페이지를 연다 (`/product?productId=...`).
-2. Burp **HTTP history** 에서 이미지 요청을 찾는다.  
-   - 예: `GET /image?filename=17.jpg`
-3. 요청을 **Repeater** 로 보낸다.  
-   (Intercept를 꼭 켤 필요는 없음. History → Repeater 로 충분.)
-4. `filename` 값을 수정한다.
-
-```http
-GET /image?filename=../../../etc/passwd HTTP/2
-Host: <lab-host>.web-security-academy.net
+```
+../../../etc/passwd
 ```
 
-5. **Send** 후 응답 본문에 다음이 보이면 성공:
+5. 응답에 `root:x:0:0:` 이런 줄 나오면 성공
 
-```text
-root:x:0:0:root:/root:/bin/bash
-daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
-...
+## 왜 됨
+
+서버가 대충 이런 식으로 파일을 연다고 보면 됨:
+
+```
+이미지폴더/ + filename
 ```
 
-### 메모 (실습 시 적은 내용)
+`17.jpg` → 정상 이미지  
+`../../../etc/passwd` → 상위 폴더 타고 시스템 파일
 
-| 관찰 | 의미 |
-|------|------|
-| `/image?filename=17.jpg` | 상품 이미지를 가져오는 요청 |
-| Burp로 요청 후 Repeater | 가로채기 없이도 history에서 수정 가능 |
-| `filename` 경로 변경 | `../../../etc/passwd` |
-| 응답 | `/etc/passwd` 내용 획득 (`Content-Type` 이 image/jpeg 이어도 본문은 텍스트) |
+검증 없이 이어 붙이면 path traversal.
 
-### 왜 되는가
+## 응답 볼 때
 
-대략 서버 내부는 이런 식이다:
+`Content-Type: image/jpeg` 떠도 본문은 텍스트일 수 있음.
+중요한 건 본문에 passwd 내용이 있는지.
 
-```text
-open("/var/www/images/" + user_filename)
+`/etc/passwd` 한 줄 형식:
+
+```
+이름:x:UID:GID:설명:홈:셸
 ```
 
-| filename | 실제 경로 (개념) |
-|----------|------------------|
-| `17.jpg` | `/var/www/images/17.jpg` |
-| `../../../etc/passwd` | `/etc/passwd` (상위 디렉터리 3번) |
+`x` 는 비밀번호가 여기 없다는 뜻 (보통 shadow 쪽). 이 파일만으로 로그인되는 건 아님.
 
-검증·정규화 없이 문자열을 이어 붙이면 **Directory / Path Traversal** 이 된다.
+## 스크립트
 
-### `/etc/passwd` 응답을 읽는 법
-
-형식:
-
-```text
-이름:암호필드:UID:GID:설명:홈:셸
-```
-
-- `root:x:0:0:...` → 관리자 계정 존재 확인  
-- `x` → 비밀번호는 보통 `/etc/shadow` 쪽 (이 파일만으로는 로그인 불가)  
-- 랩 환경에는 `carlos`, `peter` 등 연습용 계정이 보이기도 함  
-
-### 파이썬으로 같은 요청 보내기
+같은 요청 다시 보내보기:
 
 ```bash
-python ../tools/path_traversal_lab.py https://YOUR-LAB.web-security-academy.net/
+python ../tools/path_traversal_lab.py https://랩주소.web-security-academy.net/
 ```
 
 ---
 
 ## English
 
-### One-liner
+Solved the simple path traversal lab.
 
-If the app opens files as `base_dir + filename` with no sanitization,  
-setting `filename=../../../etc/passwd` can read files **outside** the image directory.
+- Find `GET /image?filename=...` in Burp history (not the product HTML page)
+- Repeater → set `filename=../../../etc/passwd`
+- Body should show `/etc/passwd` lines
 
-### Steps (Burp)
+Server roughly does `image_dir + filename` with no checks, so `../` walks out of the folder.
 
-1. Open a product page.
-2. In **HTTP history**, find `GET /image?filename=...`.
-3. **Send to Repeater** (Intercept optional).
-4. Change the parameter:
-
-```http
-GET /image?filename=../../../etc/passwd HTTP/2
-```
-
-5. Confirm the body contains `/etc/passwd` lines such as `root:x:0:0:`.
-
-### Takeaway
-
-Path traversal is not about “breaking encryption”; it is about **trusting user-controlled path segments**.  
-Fix ideas (high level): reject `..`, resolve canonical paths and enforce a root directory, use safe file IDs instead of raw paths.
-
-### Automate (lab only)
-
-```bash
-python ../tools/path_traversal_lab.py https://YOUR-LAB.web-security-academy.net/
-```
+Practice script: `../tools/path_traversal_lab.py` (Academy only).
