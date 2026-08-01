@@ -1,13 +1,9 @@
-# Web Security Academy 공부 메모
+# File Path Traversal (simple)
 
-PortSwigger Web Security Academy 풀면서 정리해 두는 곳.
-노트 + 가끔 쓰는 연습용 스크립트.
+Web Security Academy 랩 메모.
+노트 + 연습용 스크립트.
 
 **학습용만.** 허가 없는 사이트에 돌리지 말 것.
-
----
-
-## File Path Traversal (simple)
 
 풀었음.
 
